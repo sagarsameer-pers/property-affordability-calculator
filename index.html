@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Affordability Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Property Affordability Calculator</h1>
+        </header>
+
+        <main class="main-content">
+            <div class="left-column">
+                <div class="calculator-card">
+                    <h2>Your Financial Details</h2>
+                    <form id="affordabilityForm">
+                        <div class="form-row">
+                            <div class="form-group half-width">
+                                <label for="state">State</label>
+                                <select id="state" name="state" required>
+                                    <option value="">Select state</option>
+                                    <option value="NSW" selected>NSW</option>
+                                    <option value="WA">WA</option>
+                                </select>
+                            </div>
+                            <div class="form-group half-width">
+                                <label for="buyerType">Buyer Type</label>
+                                <select id="buyerType" name="buyerType" required>
+                                    <option value="">Select type</option>
+                                    <option value="first-home" selected>First Home Buyer</option>
+                                    <option value="owner-occupier">Owner Occupier</option>
+                                    <option value="investor">Investor</option>
+                                    <option value="foreign">Foreign Buyer</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="borrowingCapacity">Borrowing Capacity (AUD)</label>
+                            <div class="input-container">
+                                <span class="currency-symbol">$</span>
+                                <input 
+                                    type="text" 
+                                    id="borrowingCapacity" 
+                                    name="borrowingCapacity" 
+                                    placeholder="Enter your approved loan amount"
+                                    value="1,200,000"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="moneySavedUp">Money Saved Up (AUD)</label>
+                            <div class="input-container">
+                                <span class="currency-symbol">$</span>
+                                <input 
+                                    type="text" 
+                                    id="moneySavedUp" 
+                                    name="moneySavedUp" 
+                                    placeholder="Enter your total savings"
+                                    value="120,000"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group half-width">
+                                <label for="depositPercent">Required Deposit %</label>
+                                <input 
+                                    type="number" 
+                                    id="depositPercent" 
+                                    name="depositPercent" 
+                                    placeholder="e.g. 10"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    value="10"
+                                    required
+                                >
+                            </div>
+                            <div class="form-group half-width">
+                                <label for="lmiCoveragePercent">LMI covers % of Property Price</label>
+                                <input 
+                                    type="number" 
+                                    id="lmiCoveragePercent" 
+                                    name="lmiCoveragePercent" 
+                                    placeholder="e.g. 2"
+                                    min="0"
+                                    max="10"
+                                    step="0.1"
+                                    value="2"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group half-width">
+                                <label for="repaymentPeriod">Repayment Period (years)</label>
+                                <input 
+                                    type="number" 
+                                    id="repaymentPeriod" 
+                                    name="repaymentPeriod" 
+                                    placeholder="e.g. 30"
+                                    min="1"
+                                    max="50"
+                                    step="1"
+                                    value="30"
+                                    required
+                                >
+                            </div>
+                            <div class="form-group half-width">
+                                <label for="repaymentType">Repayment Type</label>
+                                <select id="repaymentType" name="repaymentType" required>
+                                    <option value="principal-interest" selected>Principal + Interest</option>
+                                    <option value="interest-only">Interest Only</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group half-width">
+                                <label for="interestRate">Interest Rate (%)</label>
+                                <input 
+                                    type="number" 
+                                    id="interestRate" 
+                                    name="interestRate" 
+                                    placeholder="e.g. 6.35"
+                                    min="0"
+                                    max="20"
+                                    step="0.01"
+                                    value="6.35"
+                                    required
+                                >
+                            </div>
+                            <div class="form-group half-width">
+                                <label for="propertyAppreciation">Property Appreciation Expected (%)</label>
+                                <input 
+                                    type="number" 
+                                    id="propertyAppreciation" 
+                                    name="propertyAppreciation" 
+                                    placeholder="e.g. 2.0"
+                                    min="0"
+                                    max="15"
+                                    step="0.1"
+                                    value="2.0"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <button type="submit" class="calculate-btn">Calculate Maximum Property Price</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="middle-column">
+                <div id="results" class="results-section" style="display: none;">
+                    <h2>Affordability Results</h2>
+                    <div class="results-grid">
+                        <div class="result-item highlight">
+                            <span class="result-label">Maximum Property Price Possible:</span>
+                            <span class="result-value" id="maxPropertyPrice"></span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">LMI is paying % deposit:</span>
+                            <span class="result-value" id="lmiDepositPercentage"></span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Required Deposit:</span>
+                            <span class="result-value" id="requiredDeposit"></span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">LMI Cost (insurance premium):</span>
+                            <span class="result-value" id="lmiAmount"></span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Stamp Duty:</span>
+                            <span class="result-value" id="stampDutyAmount"></span>
+                        </div>
+                        <div class="result-item total">
+                            <span class="result-label">Total Money Spent:</span>
+                            <span class="result-value" id="totalPropertyCost"></span>
+                        </div>
+                    </div>
+
+                    <div class="savings-breakdown">
+                        <h3>Money Saved Up Allocation</h3>
+                        <div class="breakdown-grid">
+                            <div class="breakdown-item">
+                                <span>For Deposit:</span>
+                                <span id="savingsForDeposit"></span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>For LMI Cost:</span>
+                                <span id="savingsForLMI"></span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>For Stamp Duty:</span>
+                                <span id="savingsForStampDuty"></span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>For Additional Charges:</span>
+                                <span id="savingsForCharges"></span>
+                            </div>
+                            <div class="breakdown-item total-breakdown">
+                                <span>Total Savings Used:</span>
+                                <span id="totalSavingsUsed"></span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>Remaining Savings:</span>
+                                <span id="remainingSavings"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="exemptionInfo" class="exemption-info" style="display: none;">
+                        <h3>Exemptions & Concessions</h3>
+                        <ul id="exemptionList"></ul>
+                    </div>
+
+
+                </div>
+
+                <div class="placeholder-message" id="placeholderMessage">
+                    <div class="icon">🏡</div>
+                    <h3>Your results will appear here</h3>
+                    <p>Enter your financial details to discover the maximum property price you can afford</p>
+                </div>
+            </div>
+
+            <div class="right-column">
+                <div id="monthly-repayments" class="monthly-repayments-section" style="display: none;">
+                    <h2>Monthly Repayments</h2>
+                    <div class="repayment-grid">
+                        <div class="repayment-item highlight">
+                            <span class="repayment-label">Monthly Payment:</span>
+                            <span class="repayment-value" id="monthlyRepayment"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="borrowing-breakdown-right" class="borrowing-breakdown" style="display: none;">
+                    <h3>Borrowed Money Allocation</h3>
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <span>Property Purchase:</span>
+                            <span id="borrowedForPropertyRight"></span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>LMI Contribution:</span>
+                            <span id="borrowedLMIContribution"></span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>Stamp Duty:</span>
+                            <span id="borrowedForStampDutyRight"></span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>Additional Charges:</span>
+                            <span id="borrowedForChargesRight"></span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>LMI Cost:</span>
+                            <span id="borrowedForLMIRight"></span>
+                        </div>
+                        <div class="breakdown-item total-breakdown">
+                            <span>Total Borrowed:</span>
+                            <span id="totalBorrowedRight"></span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>Unused Borrowing Capacity:</span>
+                            <span id="unusedBorrowingCapacity"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="deposit-breakdown-right" class="deposit-breakdown" style="display: none;">
+                    <h3>Property Funding Breakdown</h3>
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <span>Savings for Deposit:</span>
+                            <span id="depositFromSavings"></span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>Additional Savings for Property:</span>
+                            <span id="additionalSavingsForProperty"></span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>LMI Contribution:</span>
+                            <span id="lmiContribution"></span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>Borrowed for Property:</span>
+                            <span id="borrowedForPropertyBreakdown"></span>
+                        </div>
+                        <div class="breakdown-item total-breakdown">
+                            <span>Total Property Price:</span>
+                            <span id="totalPropertyPriceBreakdown"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div id="equity-buildup" class="equity-buildup full-width" style="display: none;">
+            <h3>Equity Build-up Over Time</h3>
+            <div class="equity-table-container">
+                <table class="equity-table">
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Property Value</th>
+                            <th>Loan Balance</th>
+                            <th>Principal Paid</th>
+                            <th>Appreciation</th>
+                            <th>Total Equity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="equityTableBody">
+                        <!-- Equity rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer>
+            <div class="disclaimer">
+                <h3>⚖️ Legal Disclaimer</h3>
+                <p><strong>Important Notice:</strong> This calculator provides rough estimations only and should not be relied upon for financial decision-making. The calculations use commonly used rates and assumptions that may not reflect your specific circumstances or current market conditions.</p>
+                
+                <p><strong>Key Limitations:</strong></p>
+                <ul>
+                    <li>LMI rates, stamp duty calculations, and lending criteria vary significantly between lenders and may change without notice</li>
+                    <li>Interest rates, loan terms, and property valuations are subject to lender assessment and market conditions</li>
+                    <li>Borrowing capacity depends on individual financial circumstances, credit history, and lender policies</li>
+                    <li>Stamp duty exemptions and concessions may have additional eligibility criteria not considered in this calculator</li>
+                    <li>Additional costs such as legal fees, building inspections, and ongoing property expenses are not included</li>
+                </ul>
+                
+                <p><strong>Professional Advice Required:</strong> Always consult with qualified mortgage brokers, financial advisers, and legal professionals before making any property purchase decisions. Obtain formal pre-approval from lenders and professional valuations before proceeding with any property transaction.</p>
+                
+                <p><strong>No Liability:</strong> The creators of this calculator accept no responsibility for any financial decisions made based on these estimates or any losses incurred from their use.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
