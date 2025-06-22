@@ -1,6 +1,6 @@
 # Property Affordability Calculator
 
-A comprehensive web-based calculator to determine the maximum property price you can afford based on your financial situation, borrowing capacity, and savings. Specifically designed for NSW and WA property markets with accurate stamp duty calculations and LMI considerations.
+A comprehensive web-based calculator to determine the maximum property price you can afford based on your financial situation, borrowing capacity, and savings. Supports all Australian states and territories with accurate stamp duty calculations and LMI considerations.
 
 ## Features
 
@@ -16,7 +16,7 @@ A comprehensive web-based calculator to determine the maximum property price you
 
 ### 📊 Advanced Calculations
 - **LMI Integration**: Lender's Mortgage Insurance calculations with realistic premium rates
-- **Stamp Duty**: Accurate calculations for NSW and WA with first home buyer concessions
+- **Stamp Duty**: Accurate calculations for all Australian states and territories with first home buyer concessions
 - **Monthly Repayments**: Support for both Principal+Interest and Interest-Only loans
 - **Equity Projections**: 10-year equity buildup analysis with property appreciation
 
@@ -35,9 +35,31 @@ The calculator uses a sophisticated algorithm to maximize your property purchase
 3. **Savings Maximization**: Optimally allocates your savings to minimize borrowing costs
 4. **Real-time Updates**: Instant recalculation as you adjust parameters
 
+## Supported States & Territories
+
+### 🏛️ State Coverage
+- **NSW** - New South Wales
+- **VIC** - Victoria  
+- **QLD** - Queensland
+- **WA** - Western Australia
+- **SA** - South Australia
+- **TAS** - Tasmania
+- **ACT** - Australian Capital Territory
+- **NT** - Northern Territory
+
+### 🏠 First Home Buyer Benefits by State
+- **NSW**: Up to $650K exemption, concessions up to $800K
+- **VIC**: Up to $600K exemption, concessions up to $750K  
+- **QLD**: Up to $550K exemption
+- **WA**: Up to $430K exemption, concessions up to $530K
+- **SA**: Up to $650K exemption
+- **TAS**: Up to $600K exemption
+- **ACT**: Complete exemption for first home buyers
+- **NT**: Up to $650K exemption
+
 ## Usage
 
-1. **Select Your Details**: Choose your state (NSW/WA) and buyer type
+1. **Select Your Details**: Choose your state/territory and buyer type
 2. **Enter Finances**: Input your borrowing capacity and total savings
 3. **Set Parameters**: Configure deposit percentage, LMI coverage, loan terms
 4. **View Results**: Get comprehensive breakdown of affordability and costs

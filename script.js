@@ -291,8 +291,20 @@ class AffordabilityCalculator {
         switch (state) {
             case 'NSW':
                 return this.calculateNSWStampDuty(propertyPrice, buyerType);
+            case 'VIC':
+                return this.calculateVICStampDuty(propertyPrice, buyerType);
+            case 'QLD':
+                return this.calculateQLDStampDuty(propertyPrice, buyerType);
             case 'WA':
                 return this.calculateWAStampDuty(propertyPrice, buyerType);
+            case 'SA':
+                return this.calculateSAStampDuty(propertyPrice, buyerType);
+            case 'TAS':
+                return this.calculateTASStampDuty(propertyPrice, buyerType);
+            case 'ACT':
+                return this.calculateACTStampDuty(propertyPrice, buyerType);
+            case 'NT':
+                return this.calculateNTStampDuty(propertyPrice, buyerType);
             default:
                 return { stampDuty: 0, exemptions: [], additionalCharges: 0 };
         }
@@ -392,6 +404,227 @@ class AffordabilityCalculator {
         
         const fullStampDuty = 8655 + (propertyPrice - 360000) * 0.05;
         return fullStampDuty * (1 - concessionRate);
+    }
+
+    calculateVICStampDuty(propertyPrice, buyerType) {
+        let stampDuty = 0;
+        let exemptions = [];
+        let additionalCharges = 0;
+
+        // Victoria Stamp Duty Rates (2024)
+        if (propertyPrice <= 25000) {
+            stampDuty = propertyPrice * 0.014;
+        } else if (propertyPrice <= 130000) {
+            stampDuty = 350 + (propertyPrice - 25000) * 0.024;
+        } else if (propertyPrice <= 960000) {
+            stampDuty = 2870 + (propertyPrice - 130000) * 0.055;
+        } else {
+            stampDuty = 48520 + (propertyPrice - 960000) * 0.065;
+        }
+
+        // First Home Buyer Exemptions
+        if (buyerType === 'first-home') {
+            if (propertyPrice <= 600000) {
+                stampDuty = 0;
+                exemptions.push('Full first home buyer exemption (≤ $600,000)');
+            } else if (propertyPrice <= 750000) {
+                const concession = this.calculateVICFirstHomeConcession(propertyPrice);
+                stampDuty = Math.max(0, stampDuty - concession);
+                exemptions.push('First home buyer concession applied ($600,001 - $750,000)');
+            }
+        }
+
+        // Foreign Buyer Duty (additional)
+        if (buyerType === 'foreign') {
+            additionalCharges = propertyPrice * 0.08; // 8% foreign buyer duty
+        }
+
+        return { stampDuty: Math.round(stampDuty), exemptions, additionalCharges: Math.round(additionalCharges) };
+    }
+
+    calculateVICFirstHomeConcession(propertyPrice) {
+        // Sliding scale concession for properties between $600,001 - $750,000
+        const baseStampDuty = 2870 + (propertyPrice - 130000) * 0.055;
+        const concessionRate = (750000 - propertyPrice) / 150000;
+        return baseStampDuty * concessionRate;
+    }
+
+    calculateQLDStampDuty(propertyPrice, buyerType) {
+        let stampDuty = 0;
+        let exemptions = [];
+        let additionalCharges = 0;
+
+        // Queensland Stamp Duty Rates (2024)
+        if (propertyPrice <= 5000) {
+            stampDuty = 0;
+        } else if (propertyPrice <= 75000) {
+            stampDuty = (propertyPrice - 5000) * 0.015;
+        } else if (propertyPrice <= 540000) {
+            stampDuty = 1050 + (propertyPrice - 75000) * 0.035;
+        } else if (propertyPrice <= 1000000) {
+            stampDuty = 17325 + (propertyPrice - 540000) * 0.045;
+        } else {
+            stampDuty = 38025 + (propertyPrice - 1000000) * 0.0575;
+        }
+
+        // First Home Buyer Exemptions
+        if (buyerType === 'first-home') {
+            if (propertyPrice <= 550000) {
+                stampDuty = 0;
+                exemptions.push('Full first home buyer exemption (≤ $550,000)');
+            }
+        }
+
+        // Foreign Buyer Duty (additional)
+        if (buyerType === 'foreign') {
+            additionalCharges = propertyPrice * 0.08; // 8% foreign buyer duty
+        }
+
+        return { stampDuty: Math.round(stampDuty), exemptions, additionalCharges: Math.round(additionalCharges) };
+    }
+
+    calculateSAStampDuty(propertyPrice, buyerType) {
+        let stampDuty = 0;
+        let exemptions = [];
+        let additionalCharges = 0;
+
+        // South Australia Stamp Duty Rates (2024)
+        if (propertyPrice <= 12000) {
+            stampDuty = propertyPrice * 0.01;
+        } else if (propertyPrice <= 30000) {
+            stampDuty = 120 + (propertyPrice - 12000) * 0.02;
+        } else if (propertyPrice <= 50000) {
+            stampDuty = 480 + (propertyPrice - 30000) * 0.03;
+        } else if (propertyPrice <= 100000) {
+            stampDuty = 1080 + (propertyPrice - 50000) * 0.035;
+        } else if (propertyPrice <= 200000) {
+            stampDuty = 2830 + (propertyPrice - 100000) * 0.04;
+        } else if (propertyPrice <= 250000) {
+            stampDuty = 6830 + (propertyPrice - 200000) * 0.045;
+        } else if (propertyPrice <= 300000) {
+            stampDuty = 9080 + (propertyPrice - 250000) * 0.05;
+        } else if (propertyPrice <= 500000) {
+            stampDuty = 11580 + (propertyPrice - 300000) * 0.055;
+        } else {
+            stampDuty = 22580 + (propertyPrice - 500000) * 0.06;
+        }
+
+        // First Home Buyer Exemptions
+        if (buyerType === 'first-home') {
+            if (propertyPrice <= 650000) {
+                stampDuty = 0;
+                exemptions.push('Full first home buyer exemption (≤ $650,000)');
+            }
+        }
+
+        // Foreign Buyer Duty (additional)
+        if (buyerType === 'foreign') {
+            additionalCharges = propertyPrice * 0.07; // 7% foreign buyer duty
+        }
+
+        return { stampDuty: Math.round(stampDuty), exemptions, additionalCharges: Math.round(additionalCharges) };
+    }
+
+    calculateTASStampDuty(propertyPrice, buyerType) {
+        let stampDuty = 0;
+        let exemptions = [];
+        let additionalCharges = 0;
+
+        // Tasmania Stamp Duty Rates (2024)
+        if (propertyPrice <= 3000) {
+            stampDuty = propertyPrice * 0.01;
+        } else if (propertyPrice <= 25000) {
+            stampDuty = 30 + (propertyPrice - 3000) * 0.015;
+        } else if (propertyPrice <= 75000) {
+            stampDuty = 360 + (propertyPrice - 25000) * 0.025;
+        } else if (propertyPrice <= 200000) {
+            stampDuty = 1610 + (propertyPrice - 75000) * 0.035;
+        } else if (propertyPrice <= 375000) {
+            stampDuty = 5985 + (propertyPrice - 200000) * 0.04;
+        } else if (propertyPrice <= 725000) {
+            stampDuty = 12985 + (propertyPrice - 375000) * 0.045;
+        } else {
+            stampDuty = 28735 + (propertyPrice - 725000) * 0.05;
+        }
+
+        // First Home Buyer Exemptions
+        if (buyerType === 'first-home') {
+            if (propertyPrice <= 600000) {
+                stampDuty = 0;
+                exemptions.push('Full first home buyer exemption (≤ $600,000)');
+            }
+        }
+
+        // Foreign Buyer Duty (additional)
+        if (buyerType === 'foreign') {
+            additionalCharges = propertyPrice * 0.08; // 8% foreign buyer duty
+        }
+
+        return { stampDuty: Math.round(stampDuty), exemptions, additionalCharges: Math.round(additionalCharges) };
+    }
+
+    calculateACTStampDuty(propertyPrice, buyerType) {
+        let stampDuty = 0;
+        let exemptions = [];
+        let additionalCharges = 0;
+
+        // ACT Stamp Duty Rates (2024) - Being phased out, minimal rates
+        if (propertyPrice <= 200000) {
+            stampDuty = 0;
+        } else if (propertyPrice <= 300000) {
+            stampDuty = (propertyPrice - 200000) * 0.012;
+        } else if (propertyPrice <= 500000) {
+            stampDuty = 1200 + (propertyPrice - 300000) * 0.016;
+        } else if (propertyPrice <= 750000) {
+            stampDuty = 4400 + (propertyPrice - 500000) * 0.02;
+        } else if (propertyPrice <= 1000000) {
+            stampDuty = 9400 + (propertyPrice - 750000) * 0.024;
+        } else {
+            stampDuty = 15400 + (propertyPrice - 1000000) * 0.0475;
+        }
+
+        // First Home Buyer Exemptions
+        if (buyerType === 'first-home') {
+            stampDuty = 0;
+            exemptions.push('First home buyer exemption - no stamp duty');
+        }
+
+        // Foreign Buyer Duty (additional)
+        if (buyerType === 'foreign') {
+            additionalCharges = propertyPrice * 0.125; // 12.5% foreign buyer duty
+        }
+
+        return { stampDuty: Math.round(stampDuty), exemptions, additionalCharges: Math.round(additionalCharges) };
+    }
+
+    calculateNTStampDuty(propertyPrice, buyerType) {
+        let stampDuty = 0;
+        let exemptions = [];
+        let additionalCharges = 0;
+
+        // Northern Territory Stamp Duty Rates (2024)
+        if (propertyPrice <= 25000) {
+            stampDuty = propertyPrice * 0.06 / 100; // 0.06%
+        } else if (propertyPrice <= 3000000) {
+            stampDuty = 15 + (propertyPrice - 25000) * 0.0515 / 100; // 0.0515%
+        } else {
+            stampDuty = 1546.125 + (propertyPrice - 3000000) * 0.0575 / 100; // 0.0575%
+        }
+
+        // First Home Buyer Exemptions
+        if (buyerType === 'first-home') {
+            if (propertyPrice <= 650000) {
+                stampDuty = 0;
+                exemptions.push('Full first home buyer exemption (≤ $650,000)');
+            }
+        }
+
+        // Foreign Buyer Duty (additional)
+        if (buyerType === 'foreign') {
+            additionalCharges = propertyPrice * 0.055; // 5.5% foreign buyer duty
+        }
+
+        return { stampDuty: Math.round(stampDuty), exemptions, additionalCharges: Math.round(additionalCharges) };
     }
 
     calculateLMIPremium(loanAmount, lvr, buyerType) {
