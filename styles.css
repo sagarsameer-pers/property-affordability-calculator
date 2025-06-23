@@ -474,6 +474,10 @@ footer {
     padding-left: 5px;
 }
 
+.disclaimer .privacy-notice {
+    text-align: center;
+}
+
 @media (max-width: 768px) {
     .main-content {
         grid-template-columns: 1fr;
