@@ -453,10 +453,11 @@ footer {
     padding: 15px;
     border-radius: 8px;
     backdrop-filter: blur(10px);
+    text-align: left;
 }
 
 .disclaimer p {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     opacity: 0.9;
 }
 
