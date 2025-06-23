@@ -478,6 +478,31 @@ footer {
     text-align: center;
 }
 
+.author-details {
+    text-align: center;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.author-details p {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin: 0;
+}
+
+.author-details a {
+    color: #4fc3f7;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.author-details a:hover {
+    color: #29b6f6;
+    text-decoration: underline;
+}
+
 @media (max-width: 768px) {
     .main-content {
         grid-template-columns: 1fr;
