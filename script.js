@@ -48,6 +48,8 @@ class AffordabilityCalculator {
     }
 
     calculateAffordability() {
+        console.log('🚀 BUTTON CLICKED - Starting calculation...');
+        
         const formData = new FormData(this.form);
         const borrowingCapacity = parseInt(formData.get('borrowingCapacity').replace(/,/g, '').trim()) || 0;
         const moneySavedUp = parseInt(formData.get('moneySavedUp').replace(/,/g, '').trim()) || 0;
@@ -59,6 +61,15 @@ class AffordabilityCalculator {
         const repaymentType = formData.get('repaymentType') || 'principal-interest';
         const state = formData.get('state');
         const buyerType = formData.get('buyerType');
+        
+        console.log('📊 Form inputs:', {
+            borrowingCapacity,
+            moneySavedUp,
+            depositPercent,
+            lmiCoveragePercent,
+            state,
+            buyerType
+        });
 
         if (!state || !buyerType || borrowingCapacity <= 0 || moneySavedUp <= 0) {
             alert('Please fill in all required fields with valid values');
@@ -90,6 +101,8 @@ class AffordabilityCalculator {
             return;
         }
 
+        console.log('🔍 Starting property price calculation...');
+        
         // Calculate maximum property price using the new business logic
         const result = this.findMaxPropertyPrice(
             borrowingCapacity, 
@@ -103,10 +116,15 @@ class AffordabilityCalculator {
             repaymentType
         );
 
+        console.log('📋 Calculation result:', result);
+
         if (result.maxPropertyPrice <= 0) {
+            console.log('❌ No affordable property found');
             alert('Based on your inputs, you may not be able to afford a property. Consider adjusting your parameters.');
             return;
         }
+        
+        console.log('✅ Found affordable property, displaying results...');
 
         this.displayResults({
             ...result,
@@ -129,6 +147,8 @@ class AffordabilityCalculator {
         let high = 10000000;
         let maxAffordable = 0;
         let bestResult = null;
+        
+        console.log('🔍 Binary search starting...', { low, high });
         
         for (let iteration = 0; iteration < 50; iteration++) {
             const propertyPrice = Math.floor((low + high) / 2);
@@ -191,6 +211,15 @@ class AffordabilityCalculator {
             const hasSpecialArrangement = lmiCoveragePercent === 0;
             const maxAllowedLoan = hasSpecialArrangement ? propertyPrice * 0.95 : propertyPrice * 0.90; // 95% LVR for special arrangements, 90% otherwise
             const constraint4 = totalBorrowedTemp <= maxAllowedLoan;
+            
+            if (iteration < 3) { // Log first few iterations
+                console.log(`🔄 Iteration ${iteration}: $${propertyPrice.toLocaleString()}`, {
+                    constraint1: `${totalDepositFromAllSources.toLocaleString()} >= ${requiredDeposit.toLocaleString()} = ${constraint1}`,
+                    constraint2: `${totalBorrowedTemp.toLocaleString()} <= ${borrowingCapacity.toLocaleString()} = ${constraint2}`,
+                    constraint3: `${moneySavedUp.toLocaleString()} >= ${(savingsForLMITemp + savingsForStampDutyTemp + savingsForChargesTemp + availableForDeposit).toLocaleString()} = ${constraint3}`,
+                    constraint4: `${totalBorrowedTemp.toLocaleString()} <= ${maxAllowedLoan.toLocaleString()} = ${constraint4}`
+                });
+            }
             
             if (constraint1 && constraint2 && constraint3 && constraint4) {
                 maxAffordable = propertyPrice;
