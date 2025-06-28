@@ -182,8 +182,9 @@ class AffordabilityCalculator {
             const borrowedForChargesTemp = Math.max(0, additionalCharges - savingsForChargesTemp);
             const totalBorrowedTemp = borrowedForPropertyTemp + borrowedForStampDutyTemp + borrowedForChargesTemp;
             
-            // Banking regulation: Total loan cannot exceed 90% of property value
-            const maxAllowedLoan = propertyPrice * 0.90; // 90% maximum LVR
+            // Banking regulation: Total loan cannot exceed 90% of property value (unless LMI coverage = 0%, indicating special arrangements)
+            const hasSpecialArrangement = lmiCoveragePercent === 0;
+            const maxAllowedLoan = hasSpecialArrangement ? propertyPrice * 0.95 : propertyPrice * 0.90; // 95% LVR for special arrangements, 90% otherwise
             const constraint4 = totalBorrowedTemp <= maxAllowedLoan;
             
             if (constraint1 && constraint2 && constraint3 && constraint4) {
