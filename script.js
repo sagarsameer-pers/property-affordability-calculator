@@ -803,6 +803,7 @@ class AffordabilityCalculator {
         document.getElementById('savingsForLMI').textContent = `$${data.savingsForLMI.toLocaleString()}`;
         document.getElementById('savingsForStampDuty').textContent = `$${data.savingsForStampDuty.toLocaleString()}`;
         document.getElementById('savingsForCharges').textContent = `$${data.savingsForCharges.toLocaleString()}`;
+        document.getElementById('additionalSavingsForPropertyAllocation').textContent = `$${data.remainingSavingsForProperty.toLocaleString()}`;
         document.getElementById('totalSavingsUsed').textContent = `$${data.totalSavingsUsed.toLocaleString()}`;
         document.getElementById('remainingSavings').textContent = `$${data.remainingSavings.toLocaleString()}`;
 
