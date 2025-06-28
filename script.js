@@ -281,6 +281,7 @@ class AffordabilityCalculator {
             remainingSavings: 0,
             depositFromSavings: 0,
             lmiContribution: 0,
+            remainingSavingsForProperty: 0,
             borrowedForProperty: 0,
             borrowedForStampDuty: 0,
             borrowedForCharges: 0,
