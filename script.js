@@ -158,29 +158,28 @@ class AffordabilityCalculator {
             // Total resources on right side: Money Saved + LMI Coverage + Borrowing Capacity
             const totalResources = moneySavedUp + actualLmiCoverage + borrowingCapacity;
             
-            // Check constraints:
-            // 1. Money Saved + LMI Coverage >= Required Deposit
-            // 2. Total Resources >= Total Cost
-            // 3. Money Saved >= LMI Cost (LMI cost must come from savings)
-            // 4. Total Borrowed <= 90% of Property Price (Maximum LVR constraint)
-            const constraint1 = (moneySavedUp + actualLmiCoverage) >= requiredDeposit;
-            const constraint2 = totalResources >= totalCost;
-            const constraint3 = moneySavedUp >= (requiredDeposit - actualLmiCoverage + actualLmiCost); // Must have enough savings for deposit portion + LMI cost
+            // Calculate total borrowed amount for LVR check (using maximized deposit approach)
+            const savingsForLMITemp = Math.min(moneySavedUp, actualLmiCost);
+            const savingsForStampDutyTemp = Math.min(moneySavedUp - savingsForLMITemp, stampDuty);
+            const savingsForChargesTemp = Math.min(moneySavedUp - savingsForLMITemp - savingsForStampDutyTemp, additionalCharges);
             
-            // Calculate total borrowed amount for LVR check
-            const savingsForDepositTemp = Math.min(moneySavedUp, requiredDeposit - actualLmiCoverage);
-            const savingsForLMITemp = Math.min(moneySavedUp - savingsForDepositTemp, actualLmiCost);
-            const savingsForStampDutyTemp = Math.min(moneySavedUp - savingsForDepositTemp - savingsForLMITemp, stampDuty);
-            const savingsForChargesTemp = Math.min(moneySavedUp - savingsForDepositTemp - savingsForLMITemp - savingsForStampDutyTemp, additionalCharges);
+            // Use ALL remaining savings for deposit (maximize deposit)
+            const savingsUsedForCostsTemp = savingsForLMITemp + savingsForStampDutyTemp + savingsForChargesTemp;
+            const savingsForDepositTemp = Math.max(0, moneySavedUp - savingsUsedForCostsTemp);
             
-            // Use any remaining savings to reduce property borrowing
-            const savingsUsedForSpecificItemsTemp = savingsForDepositTemp + savingsForLMITemp + savingsForStampDutyTemp + savingsForChargesTemp;
-            const remainingSavingsForPropertyTemp = Math.max(0, moneySavedUp - savingsUsedForSpecificItemsTemp);
-            
-            const borrowedForPropertyTemp = Math.max(0, propertyPrice - savingsForDepositTemp - remainingSavingsForPropertyTemp - actualLmiCoverage);
+            const borrowedForPropertyTemp = Math.max(0, propertyPrice - savingsForDepositTemp - actualLmiCoverage);
             const borrowedForStampDutyTemp = Math.max(0, stampDuty - savingsForStampDutyTemp);
             const borrowedForChargesTemp = Math.max(0, additionalCharges - savingsForChargesTemp);
             const totalBorrowedTemp = borrowedForPropertyTemp + borrowedForStampDutyTemp + borrowedForChargesTemp;
+            
+            // Check constraints:
+            // 1. Money Saved + LMI Coverage >= Required Deposit
+            // 2. Total Resources >= Total Cost
+            // 3. Money Saved >= costs (LMI + Stamp Duty + Additional Charges), with remainder going to deposit
+            // 4. Total Borrowed <= 95% of Property Price (for special arrangements) or 90% (standard)
+            const constraint1 = (moneySavedUp + actualLmiCoverage) >= requiredDeposit;
+            const constraint2 = totalResources >= totalCost;
+            const constraint3 = moneySavedUp >= (savingsForLMITemp + savingsForStampDutyTemp + savingsForChargesTemp); // Must have enough savings for costs, with remainder going to deposit
             
             // Banking regulation: Total loan cannot exceed 90% of property value (unless LMI coverage = 0%, indicating special arrangements)
             const hasSpecialArrangement = lmiCoveragePercent === 0;
@@ -194,22 +193,22 @@ class AffordabilityCalculator {
                 const depositFromSavings = Math.min(moneySavedUp, requiredDeposit - actualLmiCoverage);
                 const lmiContribution = actualLmiCoverage; // LMI covers y% of property price
                 
-                // Calculate how much savings we can use (maximize savings usage)
-                // Priority: 1) Deposit, 2) LMI Cost (must come from savings), 3) Stamp Duty, 4) Additional Charges
-                const savingsForDeposit = depositFromSavings;
-                const savingsForLMI = Math.min(moneySavedUp - savingsForDeposit, actualLmiCost); // LMI cost must come from savings
-                const savingsForStampDuty = Math.min(moneySavedUp - savingsForDeposit - savingsForLMI, stampDuty);
-                const savingsForCharges = Math.min(moneySavedUp - savingsForDeposit - savingsForLMI - savingsForStampDuty, additionalCharges);
+                // Calculate how much savings we can use (maximize deposit display)
+                // Priority: 1) LMI Cost (must come from savings), 2) Stamp Duty, 3) Additional Charges, 4) ALL remaining for Deposit
+                const savingsForLMI = Math.min(moneySavedUp, actualLmiCost); // LMI cost must come from savings
+                const savingsForStampDuty = Math.min(moneySavedUp - savingsForLMI, stampDuty);
+                const savingsForCharges = Math.min(moneySavedUp - savingsForLMI - savingsForStampDuty, additionalCharges);
                 
-                // Use any remaining savings to reduce property borrowing (maximize savings usage)
-                const savingsUsedForSpecificItems = savingsForDeposit + savingsForLMI + savingsForStampDuty + savingsForCharges;
-                const remainingSavingsForProperty = Math.max(0, moneySavedUp - savingsUsedForSpecificItems);
+                // Use ALL remaining savings for deposit (maximize deposit display)
+                const savingsUsedForCosts = savingsForLMI + savingsForStampDuty + savingsForCharges;
+                const savingsForDeposit = Math.max(0, moneySavedUp - savingsUsedForCosts); // ALL remaining money goes to deposit
+                const remainingSavingsForProperty = 0; // No separate remaining savings - all allocated to deposit
                 
                 const totalSavingsUsed = moneySavedUp; // Use ALL savings
                 const remainingSavings = 0; // No remaining savings - all used
                 
-                // Calculate borrowed money breakdown - use remaining savings to reduce property borrowing
-                const borrowedForProperty = Math.max(0, propertyPrice - savingsForDeposit - remainingSavingsForProperty - lmiContribution);
+                // Calculate borrowed money breakdown - use maximized deposit
+                const borrowedForProperty = Math.max(0, propertyPrice - savingsForDeposit - lmiContribution);
                 const borrowedForStampDuty = Math.max(0, stampDuty - savingsForStampDuty);
                 const borrowedForCharges = Math.max(0, additionalCharges - savingsForCharges);
                 const borrowedForLMI = 0; // LMI cost should always come from savings, never borrowed
