@@ -195,22 +195,28 @@ class AffordabilityCalculator {
             if (constraint1 && constraint2 && constraint3 && constraint4) {
                 maxAffordable = propertyPrice;
                 
-                // Final allocation using the calculated values
+                // Final allocation - HONOR the Required Deposit % exactly
                 const savingsForLMI = savingsForLMITemp;
                 const savingsForStampDuty = savingsForStampDutyTemp;
                 const savingsForCharges = savingsForChargesTemp;
-                const savingsForDeposit = availableForDeposit; // This is the maximized deposit amount
-                const lmiContribution = actualLmiCoverage;
                 
+                // Use EXACTLY the required deposit percentage, not more
+                const exactRequiredDepositFromSavings = Math.min(availableForDeposit, requiredDeposit - actualLmiCoverage);
+                const savingsForDeposit = Math.max(0, exactRequiredDepositFromSavings);
+                
+                // Any excess available money goes toward reducing property borrowing
+                const remainingSavingsForProperty = Math.max(0, availableForDeposit - savingsForDeposit);
+                
+                const lmiContribution = actualLmiCoverage;
                 const totalSavingsUsed = moneySavedUp; // Use ALL savings
                 const remainingSavings = 0; // No remaining savings - all used
                 
-                // Calculate borrowed money breakdown using the calculated values
-                const borrowedForProperty = borrowedForPropertyTemp;
+                // Calculate borrowed money breakdown - reduced by excess savings
+                const borrowedForProperty = Math.max(0, propertyPrice - savingsForDeposit - remainingSavingsForProperty - lmiContribution);
                 const borrowedForStampDuty = borrowedForStampDutyTemp;
                 const borrowedForCharges = borrowedForChargesTemp;
                 const borrowedForLMI = borrowedForLMITemp;
-                const totalBorrowed = totalBorrowedTemp;
+                const totalBorrowed = borrowedForProperty + borrowedForStampDuty + borrowedForCharges + borrowedForLMI;
                 const unusedBorrowingCapacity = Math.max(0, borrowingCapacity - totalBorrowed);
                 
                 // Calculate monthly repayment
@@ -234,8 +240,10 @@ class AffordabilityCalculator {
                     totalSavingsUsed: totalSavingsUsed,
                     remainingSavings: remainingSavings,
                     // Deposit breakdown
-                    depositFromSavings: savingsForDeposit, // The maximized deposit from savings
+                    depositFromSavings: savingsForDeposit, // The exact required deposit percentage
                     lmiContribution: lmiContribution,
+                    // Additional savings used for property (reduces borrowing)
+                    remainingSavingsForProperty: remainingSavingsForProperty,
                     // Borrowing breakdown
                     borrowedForProperty: borrowedForProperty,
                     borrowedForStampDuty: borrowedForStampDuty,
@@ -792,11 +800,13 @@ class AffordabilityCalculator {
         document.getElementById('savingsForLMI').textContent = `$${data.savingsForLMI.toLocaleString()}`;
         document.getElementById('savingsForStampDuty').textContent = `$${data.savingsForStampDuty.toLocaleString()}`;
         document.getElementById('savingsForCharges').textContent = `$${data.savingsForCharges.toLocaleString()}`;
+        document.getElementById('additionalSavingsForPropertyAllocation').textContent = `$${data.remainingSavingsForProperty.toLocaleString()}`;
         document.getElementById('totalSavingsUsed').textContent = `$${data.totalSavingsUsed.toLocaleString()}`;
         document.getElementById('remainingSavings').textContent = `$${data.remainingSavings.toLocaleString()}`;
 
         // Update property funding breakdown section
         document.getElementById('depositFromSavings').textContent = `$${data.depositFromSavings.toLocaleString()}`;
+        document.getElementById('additionalSavingsForProperty').textContent = `$${data.remainingSavingsForProperty.toLocaleString()}`;
         document.getElementById('lmiContribution').textContent = `$${data.lmiContribution.toLocaleString()}`;
         document.getElementById('borrowedForPropertyBreakdown').textContent = `$${data.borrowedForProperty.toLocaleString()}`;
         document.getElementById('totalPropertyPriceBreakdown').textContent = `$${data.maxPropertyPrice.toLocaleString()}`;
