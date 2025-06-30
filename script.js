@@ -130,133 +130,153 @@ class AffordabilityCalculator {
         let maxAffordable = 0;
         let bestResult = null;
         
-        for (let iteration = 0; iteration < 50; iteration++) {
-            const propertyPrice = Math.floor((low + high) / 2);
-            
+        // Helper function to test if a property price is affordable
+        const testAffordability = (propertyPrice) => {
             // Calculate stamp duty for this property price
             const stampDutyResult = this.calculateStampDuty(propertyPrice, state, buyerType);
             const stampDuty = stampDutyResult.stampDuty;
             const additionalCharges = stampDutyResult.additionalCharges;
             
-            // Calculate required amounts based on constraints
+            // Calculate required amounts
             const requiredDeposit = Math.round((propertyPrice * depositPercent) / 100);
-            const lmiCoverage = Math.round((propertyPrice * lmiCoveragePercent) / 100); // LMI covers y% of property price
+            const maxLmiContribution = Math.round((propertyPrice * lmiCoveragePercent) / 100);
             
-            // Calculate LMI cost based on realistic LVR-based premium rates
-            const loanAmount = propertyPrice - requiredDeposit + lmiCoverage; // Loan includes LMI coverage
-            const lvr = (loanAmount / propertyPrice) * 100;
-            const lmiCostCalculated = this.calculateLMIPremium(loanAmount, lvr, buyerType);
+            // Estimate LMI cost (simplified for binary search efficiency)
+            const estimatedLmiCost = propertyPrice * 0.025; // Rough 2.5% estimate
             
-            // Only include LMI if the cost is less than or equal to the contribution
-            const shouldUseLMI = lmiCostCalculated <= lmiCoverage;
-            const actualLmiCoverage = shouldUseLMI ? lmiCoverage : 0;
-            const actualLmiCost = shouldUseLMI ? lmiCostCalculated : 0;
+            // Money allocation priority: LMI Cost → Stamp Duty → Deposit
+            const moneyForLMI = Math.min(moneySavedUp, estimatedLmiCost);
+            const moneyForStampDuty = Math.min(moneySavedUp - moneyForLMI, stampDuty);
+            const moneyRemainingAfterCosts = Math.max(0, moneySavedUp - moneyForLMI - moneyForStampDuty);
             
-            // Total cost on left side: Property Price + Stamp Duty + Additional Charges + LMI Cost
-            const totalCost = propertyPrice + stampDuty + additionalCharges + actualLmiCost;
+            // Check if we can cover the costs
+            if (moneySavedUp < (moneyForLMI + moneyForStampDuty)) {
+                return false; // Can't even cover basic costs
+            }
             
-            // Total resources on right side: Money Saved + LMI Coverage + Borrowing Capacity
-            const totalResources = moneySavedUp + actualLmiCoverage + borrowingCapacity;
+            // Calculate deposit funding
+            const depositFromSavings = Math.min(moneyRemainingAfterCosts, Math.max(0, requiredDeposit - maxLmiContribution));
+            const actualLmiContribution = Math.min(maxLmiContribution, requiredDeposit - depositFromSavings);
+            const totalDepositCovered = depositFromSavings + actualLmiContribution;
             
-            // Check constraints:
-            // 1. Money Saved + LMI Coverage >= Required Deposit
-            // 2. Total Resources >= Total Cost
-            // 3. Money Saved >= LMI Cost (LMI cost must come from savings)
-            // 4. Total Borrowed <= 90% of Property Price (Maximum LVR constraint)
-            const constraint1 = (moneySavedUp + actualLmiCoverage) >= requiredDeposit;
-            const constraint2 = totalResources >= totalCost;
-            const constraint3 = moneySavedUp >= (requiredDeposit - actualLmiCoverage + actualLmiCost); // Must have enough savings for deposit portion + LMI cost
+            // Check if deposit requirement is met
+            if (totalDepositCovered < requiredDeposit) {
+                return false;
+            }
             
-            // Calculate total borrowed amount for LVR check
-            const savingsForDepositTemp = Math.min(moneySavedUp, requiredDeposit - actualLmiCoverage);
-            const savingsForLMITemp = Math.min(moneySavedUp - savingsForDepositTemp, actualLmiCost);
-            const savingsForStampDutyTemp = Math.min(moneySavedUp - savingsForDepositTemp - savingsForLMITemp, stampDuty);
-            const savingsForChargesTemp = Math.min(moneySavedUp - savingsForDepositTemp - savingsForLMITemp - savingsForStampDutyTemp, additionalCharges);
+            // Calculate total borrowing needed
+            const totalCost = propertyPrice + stampDuty + additionalCharges + estimatedLmiCost;
+            const totalFromSavingsAndLMI = moneySavedUp + actualLmiContribution;
+            const borrowingNeeded = Math.max(0, totalCost - totalFromSavingsAndLMI);
             
-            // Use any remaining savings to reduce property borrowing
-            const savingsUsedForSpecificItemsTemp = savingsForDepositTemp + savingsForLMITemp + savingsForStampDutyTemp + savingsForChargesTemp;
-            const remainingSavingsForPropertyTemp = Math.max(0, moneySavedUp - savingsUsedForSpecificItemsTemp);
+            // Check borrowing capacity constraint
+            if (borrowingNeeded > borrowingCapacity) {
+                return false;
+            }
             
-            const borrowedForPropertyTemp = Math.max(0, propertyPrice - savingsForDepositTemp - remainingSavingsForPropertyTemp - actualLmiCoverage);
-            const borrowedForStampDutyTemp = Math.max(0, stampDuty - savingsForStampDutyTemp);
-            const borrowedForChargesTemp = Math.max(0, additionalCharges - savingsForChargesTemp);
-            const totalBorrowedTemp = borrowedForPropertyTemp + borrowedForStampDutyTemp + borrowedForChargesTemp;
+            // Check LVR constraint - allow 95% LVR when LMI Coverage = 0%
+            const maxLVR = lmiCoveragePercent === 0 ? 0.95 : 0.90;
+            const loanForProperty = Math.max(0, propertyPrice - totalDepositCovered);
+            const lvr = loanForProperty / propertyPrice;
             
-            // Banking regulation: Total loan cannot exceed 90% of property value
-            const maxAllowedLoan = propertyPrice * 0.90; // 90% maximum LVR
-            const constraint4 = totalBorrowedTemp <= maxAllowedLoan;
+            if (lvr > maxLVR) {
+                return false;
+            }
             
-            if (constraint1 && constraint2 && constraint3 && constraint4) {
+            return true;
+        };
+        
+        // Binary search for maximum affordable price
+        for (let iteration = 0; iteration < 50 && high - low > 1000; iteration++) {
+            const propertyPrice = Math.floor((low + high) / 2);
+            
+            if (testAffordability(propertyPrice)) {
                 maxAffordable = propertyPrice;
-                
-                // Calculate deposit breakdown - maximize use of savings first
-                const depositFromSavings = Math.min(moneySavedUp, requiredDeposit - actualLmiCoverage);
-                const lmiContribution = actualLmiCoverage; // LMI covers y% of property price
-                
-                // Calculate how much savings we can use (maximize savings usage)
-                // Priority: 1) Deposit, 2) LMI Cost (must come from savings), 3) Stamp Duty, 4) Additional Charges
-                const savingsForDeposit = depositFromSavings;
-                const savingsForLMI = Math.min(moneySavedUp - savingsForDeposit, actualLmiCost); // LMI cost must come from savings
-                const savingsForStampDuty = Math.min(moneySavedUp - savingsForDeposit - savingsForLMI, stampDuty);
-                const savingsForCharges = Math.min(moneySavedUp - savingsForDeposit - savingsForLMI - savingsForStampDuty, additionalCharges);
-                
-                // Use any remaining savings to reduce property borrowing (maximize savings usage)
-                const savingsUsedForSpecificItems = savingsForDeposit + savingsForLMI + savingsForStampDuty + savingsForCharges;
-                const remainingSavingsForProperty = Math.max(0, moneySavedUp - savingsUsedForSpecificItems);
-                
-                const totalSavingsUsed = moneySavedUp; // Use ALL savings
-                const remainingSavings = 0; // No remaining savings - all used
-                
-                // Calculate borrowed money breakdown - use remaining savings to reduce property borrowing
-                const borrowedForProperty = Math.max(0, propertyPrice - savingsForDeposit - remainingSavingsForProperty - lmiContribution);
-                const borrowedForStampDuty = Math.max(0, stampDuty - savingsForStampDuty);
-                const borrowedForCharges = Math.max(0, additionalCharges - savingsForCharges);
-                const borrowedForLMI = 0; // LMI cost should always come from savings, never borrowed
-                const totalBorrowed = borrowedForProperty + borrowedForStampDuty + borrowedForCharges + borrowedForLMI;
-                const unusedBorrowingCapacity = Math.max(0, borrowingCapacity - totalBorrowed);
-                
-                // Calculate monthly repayment
-                const monthlyRepayment = this.calculateMonthlyRepayment(totalBorrowed, interestRate, repaymentPeriod, repaymentType);
-                
-                bestResult = {
-                    maxPropertyPrice: propertyPrice,
-                    requiredDeposit: requiredDeposit,
-                    lmiAmount: actualLmiCost, // This is the LMI insurance premium cost
-                    lmiCoverage: actualLmiCoverage, // This is what LMI covers
-                    stampDuty: stampDuty,
-                    additionalCharges: additionalCharges,
-                    moneyUsed: totalSavingsUsed,
-                    totalPropertyCost: totalCost,
-                    exemptions: stampDutyResult.exemptions,
-                    // Savings breakdown
-                    savingsForDeposit: savingsForDeposit,
-                    savingsForLMI: savingsForLMI,
-                    savingsForStampDuty: savingsForStampDuty,
-                    savingsForCharges: savingsForCharges,
-                    totalSavingsUsed: totalSavingsUsed,
-                    remainingSavings: remainingSavings,
-                    // Deposit breakdown
-                    depositFromSavings: savingsForDeposit, // Only the actual deposit portion from savings
-                    lmiContribution: lmiContribution,
-                    // Additional savings used for property
-                    remainingSavingsForProperty: remainingSavingsForProperty,
-                    // Borrowing breakdown
-                    borrowedForProperty: borrowedForProperty,
-                    borrowedForStampDuty: borrowedForStampDuty,
-                    borrowedForCharges: borrowedForCharges,
-                    borrowedForLMI: borrowedForLMI,
-                    totalBorrowed: totalBorrowed,
-                    unusedBorrowingCapacity: unusedBorrowingCapacity,
-                    monthlyRepayment: monthlyRepayment
-                };
-                low = propertyPrice + 1;
+                low = propertyPrice;
             } else {
-                high = propertyPrice - 1;
+                high = propertyPrice;
             }
+        }
+        
+        // Calculate final detailed breakdown for the maximum affordable price
+        if (maxAffordable > 0) {
+            const propertyPrice = maxAffordable;
+            const stampDutyResult = this.calculateStampDuty(propertyPrice, state, buyerType);
+            const stampDuty = stampDutyResult.stampDuty;
+            const additionalCharges = stampDutyResult.additionalCharges;
             
-            if (high - low < 1000) {
-                break;
-            }
+            const requiredDeposit = Math.round((propertyPrice * depositPercent) / 100);
+            const maxLmiContribution = Math.round((propertyPrice * lmiCoveragePercent) / 100);
+            
+            // Calculate actual LMI cost with proper LVR calculation
+            const preliminaryLoanAmount = propertyPrice - requiredDeposit + maxLmiContribution;
+            const preliminaryLVR = (preliminaryLoanAmount / propertyPrice) * 100;
+            const actualLmiCost = this.calculateLMIPremium(preliminaryLoanAmount, preliminaryLVR, buyerType);
+            
+            // Money allocation priority: LMI Cost → Stamp Duty → Deposit
+            const moneyForLMI = Math.min(moneySavedUp, actualLmiCost);
+            const moneyForStampDuty = Math.min(moneySavedUp - moneyForLMI, stampDuty);
+            const moneyForAdditionalCharges = Math.min(moneySavedUp - moneyForLMI - moneyForStampDuty, additionalCharges);
+            const moneyRemainingAfterCosts = Math.max(0, moneySavedUp - moneyForLMI - moneyForStampDuty - moneyForAdditionalCharges);
+            
+            // Calculate deposit funding
+            const depositFromSavings = Math.min(moneyRemainingAfterCosts, Math.max(0, requiredDeposit - maxLmiContribution));
+            const actualLmiContribution = Math.min(maxLmiContribution, requiredDeposit - depositFromSavings);
+            const totalDepositCovered = depositFromSavings + actualLmiContribution;
+            
+            // Calculate borrowing breakdown
+            const borrowedForProperty = Math.max(0, propertyPrice - totalDepositCovered);
+            const borrowedForStampDuty = Math.max(0, stampDuty - moneyForStampDuty);
+            const borrowedForAdditionalCharges = Math.max(0, additionalCharges - moneyForAdditionalCharges);
+            const borrowedForLMI = Math.max(0, actualLmiCost - moneyForLMI);
+            const totalBorrowed = borrowedForProperty + borrowedForStampDuty + borrowedForAdditionalCharges + borrowedForLMI;
+            
+            // Calculate remaining amounts
+            const totalSavingsUsed = moneyForLMI + moneyForStampDuty + moneyForAdditionalCharges + depositFromSavings;
+            const remainingSavings = Math.max(0, moneySavedUp - totalSavingsUsed);
+            const unusedBorrowingCapacity = Math.max(0, borrowingCapacity - totalBorrowed);
+            
+            // Calculate monthly repayment
+            const monthlyRepayment = this.calculateMonthlyRepayment(totalBorrowed, interestRate, repaymentPeriod, repaymentType);
+            
+            // Calculate final LVR for display
+            const finalLVR = (borrowedForProperty / propertyPrice) * 100;
+            const lmiDepositPercentage = (actualLmiContribution / propertyPrice) * 100;
+            
+            bestResult = {
+                maxPropertyPrice: propertyPrice,
+                requiredDeposit: requiredDeposit,
+                lmiAmount: actualLmiCost,
+                lmiCoverage: actualLmiContribution,
+                stampDuty: stampDuty,
+                additionalCharges: additionalCharges,
+                moneyUsed: totalSavingsUsed,
+                totalPropertyCost: propertyPrice + stampDuty + additionalCharges + actualLmiCost,
+                exemptions: stampDutyResult.exemptions,
+                // Savings breakdown
+                savingsForDeposit: depositFromSavings,
+                savingsForLMI: moneyForLMI,
+                savingsForStampDuty: moneyForStampDuty,
+                savingsForCharges: moneyForAdditionalCharges,
+                totalSavingsUsed: totalSavingsUsed,
+                remainingSavings: remainingSavings,
+                // Deposit breakdown
+                depositFromSavings: depositFromSavings,
+                lmiContribution: actualLmiContribution,
+                // Additional values for property breakdown
+                remainingSavingsForProperty: 0,
+                // Borrowing breakdown
+                borrowedForProperty: borrowedForProperty,
+                borrowedForStampDuty: borrowedForStampDuty,
+                borrowedForCharges: borrowedForAdditionalCharges,
+                borrowedForLMI: borrowedForLMI,
+                totalBorrowed: totalBorrowed,
+                unusedBorrowingCapacity: unusedBorrowingCapacity,
+                monthlyRepayment: monthlyRepayment,
+                // Additional display values
+                lmiDepositPercentage: lmiDepositPercentage,
+                finalLVR: finalLVR
+            };
         }
         
         return bestResult || {
