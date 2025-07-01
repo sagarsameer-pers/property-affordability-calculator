@@ -124,13 +124,76 @@ class AffordabilityCalculator {
     }
 
     findMaxPropertyPrice(borrowingCapacity, moneySavedUp, depositPercent, lmiCoveragePercent, state, buyerType, repaymentPeriod, interestRate, repaymentType) {
-        // Binary search to find maximum affordable property price
+        // OPTIMIZATION ALGORITHM: Find the best combination of borrowing + LMI contribution + savings
+        // to maximize property price
+        
+        let bestResult = null;
+        let maxPropertyPrice = 0;
+        
+        // Test different LMI contribution levels from 0% to maximum allowed %
+        // This allows us to find the optimal balance
+        const maxLmiSteps = Math.max(1, Math.floor(lmiCoveragePercent * 10)); // Test in 0.1% increments
+        
+        for (let lmiStep = 0; lmiStep <= maxLmiSteps; lmiStep++) {
+            const currentLmiPercent = (lmiStep / 10); // Convert back to percentage
+            
+            // For this LMI contribution level, find the maximum affordable property price
+            const result = this.findMaxPropertyPriceForLmiLevel(
+                borrowingCapacity, 
+                moneySavedUp, 
+                depositPercent, 
+                currentLmiPercent, 
+                state, 
+                buyerType, 
+                repaymentPeriod, 
+                interestRate, 
+                repaymentType
+            );
+            
+            // Keep track of the best combination found so far
+            if (result && result.maxPropertyPrice > maxPropertyPrice) {
+                maxPropertyPrice = result.maxPropertyPrice;
+                bestResult = result;
+                bestResult.optimizedLmiPercent = currentLmiPercent; // Track which LMI % was optimal
+            }
+        }
+        
+        return bestResult || {
+            maxPropertyPrice: 0,
+            requiredDeposit: 0,
+            lmiAmount: 0,
+            lmiCoverage: 0,
+            stampDuty: 0,
+            additionalCharges: 0,
+            moneyUsed: 0,
+            totalPropertyCost: 0,
+            exemptions: [],
+            savingsForDeposit: 0,
+            savingsForLMI: 0,
+            savingsForStampDuty: 0,
+            savingsForCharges: 0,
+            totalSavingsUsed: 0,
+            remainingSavings: 0,
+            depositFromSavings: 0,
+            lmiContribution: 0,
+            borrowedForProperty: 0,
+            borrowedForStampDuty: 0,
+            borrowedForCharges: 0,
+            borrowedForLMI: 0,
+            totalBorrowed: 0,
+            unusedBorrowingCapacity: 0,
+            monthlyRepayment: 0,
+            optimizedLmiPercent: 0
+        };
+    }
+
+    findMaxPropertyPriceForLmiLevel(borrowingCapacity, moneySavedUp, depositPercent, lmiPercent, state, buyerType, repaymentPeriod, interestRate, repaymentType) {
+        // Binary search to find maximum affordable property price for a specific LMI contribution level
         let low = 100000;
         let high = 10000000;
         let maxAffordable = 0;
-        let bestResult = null;
         
-        // Helper function to test if a property price is affordable
+        // Helper function to test if a property price is affordable with current LMI level
         const testAffordability = (propertyPrice) => {
             // Calculate stamp duty for this property price
             const stampDutyResult = this.calculateStampDuty(propertyPrice, state, buyerType);
@@ -139,54 +202,57 @@ class AffordabilityCalculator {
             
             // Calculate required amounts
             const requiredDeposit = Math.round((propertyPrice * depositPercent) / 100);
-            const maxLmiContribution = Math.round((propertyPrice * lmiCoveragePercent) / 100);
+            const lmiContribution = Math.round((propertyPrice * lmiPercent) / 100);
             
-            // Estimate LMI cost (simplified for binary search efficiency)
-            const estimatedLmiCost = propertyPrice * 0.025; // Rough 2.5% estimate
+            // Calculate LMI cost based on actual LVR
+            const preliminaryLoanAmount = propertyPrice - requiredDeposit + lmiContribution;
+            const preliminaryLVR = (preliminaryLoanAmount / propertyPrice) * 100;
+            const lmiCost = this.calculateLMIPremium(preliminaryLoanAmount, preliminaryLVR, buyerType);
             
-            // Money allocation priority: LMI Cost → Stamp Duty → Deposit
-            const moneyForLMI = Math.min(moneySavedUp, estimatedLmiCost);
+            // Money allocation priority: LMI Cost → Stamp Duty → Additional Charges → Deposit
+            const moneyForLMI = Math.min(moneySavedUp, lmiCost);
             const moneyForStampDuty = Math.min(moneySavedUp - moneyForLMI, stampDuty);
-            const moneyRemainingAfterCosts = Math.max(0, moneySavedUp - moneyForLMI - moneyForStampDuty);
+            const moneyForAdditionalCharges = Math.min(moneySavedUp - moneyForLMI - moneyForStampDuty, additionalCharges);
+            const moneyRemainingForDeposit = Math.max(0, moneySavedUp - moneyForLMI - moneyForStampDuty - moneyForAdditionalCharges);
             
-            // Check if we can cover the costs
-            if (moneySavedUp < (moneyForLMI + moneyForStampDuty)) {
-                return false; // Can't even cover basic costs
+            // Check if we can cover basic costs
+            const totalBasicCosts = moneyForLMI + moneyForStampDuty + moneyForAdditionalCharges;
+            if (moneySavedUp < totalBasicCosts) {
+                return false; // Can't cover basic costs
             }
             
-            // Calculate deposit funding
-            const depositFromSavings = Math.min(moneyRemainingAfterCosts, Math.max(0, requiredDeposit - maxLmiContribution));
-            const actualLmiContribution = Math.min(maxLmiContribution, requiredDeposit - depositFromSavings);
+            // Check if deposit requirement can be met
+            const depositFromSavings = Math.min(moneyRemainingForDeposit, Math.max(0, requiredDeposit - lmiContribution));
+            const actualLmiContribution = Math.min(lmiContribution, requiredDeposit - depositFromSavings);
             const totalDepositCovered = depositFromSavings + actualLmiContribution;
             
-            // Check if deposit requirement is met
             if (totalDepositCovered < requiredDeposit) {
-                return false;
+                return false; // Can't meet deposit requirement
             }
             
             // Calculate total borrowing needed
-            const totalCost = propertyPrice + stampDuty + additionalCharges + estimatedLmiCost;
+            const totalCost = propertyPrice + stampDuty + additionalCharges + lmiCost;
             const totalFromSavingsAndLMI = moneySavedUp + actualLmiContribution;
             const borrowingNeeded = Math.max(0, totalCost - totalFromSavingsAndLMI);
             
             // Check borrowing capacity constraint
             if (borrowingNeeded > borrowingCapacity) {
-                return false;
+                return false; // Exceeds borrowing capacity
             }
             
-            // Check LVR constraint - allow 95% LVR when LMI Coverage = 0%
-            const maxLVR = lmiCoveragePercent === 0 ? 0.95 : 0.90;
+            // Check LVR constraint
+            const maxLVR = lmiPercent === 0 ? 0.95 : 0.90;
             const loanForProperty = Math.max(0, propertyPrice - totalDepositCovered);
             const lvr = loanForProperty / propertyPrice;
             
             if (lvr > maxLVR) {
-                return false;
+                return false; // Exceeds LVR limit
             }
             
             return true;
         };
         
-        // Binary search for maximum affordable price
+        // Binary search for maximum affordable price at this LMI level
         for (let iteration = 0; iteration < 50 && high - low > 1000; iteration++) {
             const propertyPrice = Math.floor((low + high) / 2);
             
@@ -198,7 +264,7 @@ class AffordabilityCalculator {
             }
         }
         
-        // Calculate final detailed breakdown for the maximum affordable price
+        // Calculate final detailed breakdown for the maximum affordable price at this LMI level
         if (maxAffordable > 0) {
             const propertyPrice = maxAffordable;
             const stampDutyResult = this.calculateStampDuty(propertyPrice, state, buyerType);
@@ -206,14 +272,14 @@ class AffordabilityCalculator {
             const additionalCharges = stampDutyResult.additionalCharges;
             
             const requiredDeposit = Math.round((propertyPrice * depositPercent) / 100);
-            const maxLmiContribution = Math.round((propertyPrice * lmiCoveragePercent) / 100);
+            const maxLmiContribution = Math.round((propertyPrice * lmiPercent) / 100);
             
             // Calculate actual LMI cost with proper LVR calculation
             const preliminaryLoanAmount = propertyPrice - requiredDeposit + maxLmiContribution;
             const preliminaryLVR = (preliminaryLoanAmount / propertyPrice) * 100;
             const actualLmiCost = this.calculateLMIPremium(preliminaryLoanAmount, preliminaryLVR, buyerType);
             
-            // Money allocation priority: LMI Cost → Stamp Duty → Deposit
+            // Money allocation priority: LMI Cost → Stamp Duty → Additional Charges → Deposit
             const moneyForLMI = Math.min(moneySavedUp, actualLmiCost);
             const moneyForStampDuty = Math.min(moneySavedUp - moneyForLMI, stampDuty);
             const moneyForAdditionalCharges = Math.min(moneySavedUp - moneyForLMI - moneyForStampDuty, additionalCharges);
@@ -243,7 +309,7 @@ class AffordabilityCalculator {
             const finalLVR = (borrowedForProperty / propertyPrice) * 100;
             const lmiDepositPercentage = (actualLmiContribution / propertyPrice) * 100;
             
-            bestResult = {
+            return {
                 maxPropertyPrice: propertyPrice,
                 requiredDeposit: requiredDeposit,
                 lmiAmount: actualLmiCost,
@@ -275,36 +341,12 @@ class AffordabilityCalculator {
                 monthlyRepayment: monthlyRepayment,
                 // Additional display values
                 lmiDepositPercentage: lmiDepositPercentage,
-                finalLVR: finalLVR
+                finalLVR: finalLVR,
+                actualLmiPercent: lmiPercent // Track the actual LMI % used for this result
             };
         }
         
-        return bestResult || {
-            maxPropertyPrice: 0,
-            requiredDeposit: 0,
-            lmiAmount: 0,
-            lmiCoverage: 0,
-            stampDuty: 0,
-            additionalCharges: 0,
-            moneyUsed: 0,
-            totalPropertyCost: 0,
-            exemptions: [],
-            savingsForDeposit: 0,
-            savingsForLMI: 0,
-            savingsForStampDuty: 0,
-            savingsForCharges: 0,
-            totalSavingsUsed: 0,
-            remainingSavings: 0,
-            depositFromSavings: 0,
-            lmiContribution: 0,
-            borrowedForProperty: 0,
-            borrowedForStampDuty: 0,
-            borrowedForCharges: 0,
-            borrowedForLMI: 0,
-            totalBorrowed: 0,
-            unusedBorrowingCapacity: 0,
-            monthlyRepayment: 0
-        };
+        return null;
     }
 
     calculateStampDuty(propertyPrice, state, buyerType) {
